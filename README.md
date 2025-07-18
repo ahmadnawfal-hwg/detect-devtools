@@ -57,7 +57,7 @@ export default defineNuxtPlugin(() => {
 
   const cookie = useCookie('devtools-detected');
 
-  // 1. Early detection script
+  // 1. Inject a script into <head> to detect DevTools as early as possible (before Nuxt fully mounts)
   const earlyScript = document.createElement('script');
   earlyScript.innerHTML = `
     const start = performance.now();
@@ -70,20 +70,28 @@ export default defineNuxtPlugin(() => {
   `;
   document.head.appendChild(earlyScript);
 
-  // 2. Runtime detection
+  // 2. Runtime detection in case DevTools is opened after initial load
   const detectViaDebugger = () => {
     const start = performance.now();
+    // eslint-disable-next-line no-debugger
     debugger;
     const end = performance.now();
+
     if (end - start > 100) {
       cookie.value = 'true';
       window.location.href = '/devtools-detected';
     }
   };
 
-  // 3. Detection intervals
+  // 3. Initial delay detection
   setTimeout(() => detectViaDebugger(), 300);
-  const interval = setInterval(() => detectViaDebugger(), 1000);
+
+  // 4. Continuous monitoring every second
+  const interval = setInterval(() => {
+    detectViaDebugger();
+  }, 1000);
+
+  // 5. Clear interval on page unload to avoid memory leaks
   window.addEventListener('beforeunload', () => clearInterval(interval));
 });
 ```
